@@ -2,6 +2,7 @@ const { Pool } = require("pg");
 const { parseReplay } = require("../../lib/parse");
 const { insertActions } = require("../../lib/actions");
 const { fetchParticipationReplay } = require("../../lib/sapPlayback");
+const { persistOpponentReplay } = require("../../lib/replayPerspectives");
 const { registerReplayInsertAndMaybeStartTopBoards } = require("../../lib/topBoardsAutoRun");
 
 const pool = new Pool({
@@ -120,10 +121,11 @@ async function enrichReplayWithOpponentRank(raw, parsed, participationId) {
   let opponentRank = primaryOpponentRank;
   let opponentId = parsed.opponentId || null;
   let opponentParticipationId = parsed.opponentParticipationId || null;
+  let opponentRaw = null;
 
   if (opponentParticipationId && opponentParticipationId !== participationId) {
     try {
-      const opponentRaw = await fetchParticipationReplay(opponentParticipationId);
+      opponentRaw = await fetchParticipationReplay(opponentParticipationId);
       const opponentParsed = parseReplay(opponentRaw);
       opponentId = opponentParsed.playerId || opponentId;
       const opponentSidePlayerRank = isFiniteRank(opponentParsed.playerRank);
@@ -147,6 +149,7 @@ async function enrichReplayWithOpponentRank(raw, parsed, participationId) {
 
   return {
     raw,
+    opponentRaw,
     parsed: {
       ...parsed,
       playerRank,
@@ -202,10 +205,18 @@ async function ingestParticipationReplay(rawParticipationId) {
 
     if (normalizedMatchId) {
       const existingMatch = await client.query(
-        "select id from replays where match_id = $1 limit 1",
+        "select id, participation_id from replays where match_id = $1 limit 1",
         [normalizedMatchId]
       );
       if (existingMatch.rowCount) {
+        await persistOpponentReplay(client, {
+          replayId: existingMatch.rows[0].id,
+          existingParticipationId: existingMatch.rows[0].participation_id,
+          participationId,
+          currentRaw: finalRaw,
+          opponentRaw: enriched.opponentRaw,
+          opponentParticipationId: finalParsed.opponentParticipationId
+        });
         return {
           status: "exists_match",
           replayId: existingMatch.rows[0].id,
@@ -235,11 +246,12 @@ async function ingestParticipationReplay(rawParticipationId) {
          player_id,
          opponent_id,
          opponent_participation_id,
+         opponent_raw_json,
          player_rank,
          opponent_rank,
          raw_json
        )
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
        on conflict do nothing
        returning id`,
       [
@@ -261,6 +273,7 @@ async function ingestParticipationReplay(rawParticipationId) {
         finalParsed.playerId,
         finalParsed.opponentId,
         finalParsed.opponentParticipationId,
+        enriched.opponentRaw,
         finalParsed.playerRank,
         finalParsed.opponentRank,
         finalRaw
@@ -284,10 +297,18 @@ async function ingestParticipationReplay(rawParticipationId) {
 
       if (normalizedMatchId) {
         const existingByMatch = await client.query(
-          "select id from replays where match_id = $1 limit 1",
+          "select id, participation_id from replays where match_id = $1 limit 1",
           [normalizedMatchId]
         );
         if (existingByMatch.rowCount) {
+          await persistOpponentReplay(client, {
+            replayId: existingByMatch.rows[0].id,
+            existingParticipationId: existingByMatch.rows[0].participation_id,
+            participationId,
+            currentRaw: finalRaw,
+            opponentRaw: enriched.opponentRaw,
+            opponentParticipationId: finalParsed.opponentParticipationId
+          });
           return {
             status: "exists_match",
             replayId: existingByMatch.rows[0].id,

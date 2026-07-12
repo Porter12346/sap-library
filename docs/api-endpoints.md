@@ -26,6 +26,7 @@ It also includes a short appendix for external Teamwood endpoints that this proj
 | `/api/replays/{id}/turns` | `GET` | Expanded turn-by-turn replay view |
 | `/api/replays/{id}/image` | `GET` | Render replay summary image |
 | `/api/replays/{id}/calculator` | `GET` | Build calculator link for a replay turn |
+| `/api/replays/{id}/perspectives` | `GET` | Return raw playback perspectives for both participation ids |
 | `/api/player-tags` | `GET`, `POST`, `DELETE` | Manage per-player tags |
 | `/api/hidden-players` | `GET`, `POST`, `DELETE` | Manage hidden players |
 | `/api/profile/players` | `GET` | Profile player autocomplete/search |
@@ -406,9 +407,15 @@ Example response:
 {
   "replayId": "uuid",
   "participationId": "uuid",
+  "opponentParticipationId": "uuid",
   "turn": 8,
   "maxTurn": 12,
-  "url": "https://..."
+  "url": "https://...",
+  "perspectives": {
+    "player": "stored",
+    "opponent": "fetched",
+    "opponentRawAvailable": true
+  }
 }
 ```
 
@@ -416,7 +423,50 @@ Errors:
 
 - `400`: invalid or missing `turn`
 - `404`: replay not found or no battle actions
+- `502`: opponent perspective could not be fetched
 - `500`: calculator generation failed
+
+The endpoint resolves the opponent participation id from the stored replay. If
+the opponent raw perspective is not already stored, it fetches that PID from
+Teamwood and persists it before generating the link. This is required for
+custom packs because the primary battle response may not include the opponent's
+complete deck.
+
+The response also includes `perspectives.opponent` as `stored` or `fetched` and
+`perspectives.opponentRawAvailable` so callers can verify which raw inputs were
+used.
+
+### `GET /api/replays/{id}/perspectives`
+
+Returns the raw playback response for the stored participation id and its
+opponent participation id. Missing opponent data is fetched and persisted using
+the same lazy backfill used by the calculator endpoint.
+
+Example response:
+
+```json
+{
+  "replayId": "uuid",
+  "matchId": "match-uuid",
+  "perspectives": [
+    {
+      "role": "player",
+      "participationId": "player-pid",
+      "raw": {}
+    },
+    {
+      "role": "opponent",
+      "participationId": "opponent-pid",
+      "raw": {}
+    }
+  ]
+}
+```
+
+Errors:
+
+- `404`: replay not found
+- `502`: opponent perspective could not be fetched
 
 ## Player Tags
 

@@ -93,6 +93,7 @@ export async function GET(_req, context) {
          player_id,
          opponent_id,
          opponent_participation_id,
+         (opponent_raw_json is not null) as opponent_replay_available,
          player_rank,
          opponent_rank,
          tags,

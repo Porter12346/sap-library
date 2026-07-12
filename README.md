@@ -35,6 +35,7 @@ alter table replays add column if not exists opponent_pack text;
 alter table replays add column if not exists player_id text;
 alter table replays add column if not exists opponent_id text;
 alter table replays add column if not exists opponent_participation_id text;
+alter table replays add column if not exists opponent_raw_json jsonb;
 alter table replays add column if not exists player_rank int;
 alter table replays add column if not exists opponent_rank int;
 create index if not exists idx_replays_game_version on replays(game_version);
@@ -58,6 +59,8 @@ Open `http://localhost:3000`.
 - `GET /api/search?player=...&pack=...&pet=...&perk=...&turn=...` to search
 - `GET /api/replays/:id/image` to render a replay image
 - `GET /api/replays/:id/turns` to fetch full turn-level data (turn stats + pets by side/turn)
+- `GET /api/replays/:id/calculator?turn=...` to generate a calculator link using both replay perspectives
+- `GET /api/replays/:id/perspectives` to fetch the raw playback responses for both participation IDs
 
 ## Notes
 

@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "node --test test/calculator.test.js",
     "bot:discord": "node services/discord-bot/index.js",
     "history:sync": "node scripts/sync-history.js",
     "top-boards:run": "node scripts/run-top-boards.js",

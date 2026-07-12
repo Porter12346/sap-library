@@ -26,6 +26,7 @@ alter table replays add column if not exists match_id text;
 alter table replays add column if not exists player_id text;
 alter table replays add column if not exists opponent_id text;
 alter table replays add column if not exists opponent_participation_id text;
+alter table replays add column if not exists opponent_raw_json jsonb;
 alter table replays add column if not exists player_rank int;
 alter table replays add column if not exists opponent_rank int;
 
